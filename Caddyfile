@@ -1,0 +1,26 @@
+{
+	email {$ACME_EMAIL}
+	# Solo se emiten certificados para dominios dados de alta en el CMS
+	on_demand_tls {
+		ask http://app:3000/api/public/domain-check
+	}
+}
+
+# Panel de administración
+{$ADMIN_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}
+
+# Webs de los clientes (dominios propios y subdominios)
+https:// {
+	tls {
+		on_demand
+	}
+	encode zstd gzip
+	reverse_proxy app:3000
+}
+
+http:// {
+	redir https://{host}{uri} permanent
+}

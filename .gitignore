@@ -1,0 +1,8 @@
+node_modules
+.next
+uploads
+.env
+!.env.production.example
+!.env.example
+*.tsbuildinfo
+next-env.d.ts

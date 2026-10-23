@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GlobalRole {
+  SUPERADMIN
+  USER
+}
+
+/// ADMIN: todo dentro del sitio · EDITOR: contenido, menús, formularios · CLIENT: editar contenido y ver mensajes
+enum SiteRole {
+  ADMIN
+  EDITOR
+  CLIENT
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  role         GlobalRole   @default(USER)
+  active       Boolean      @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
+  sessions     Session[]
+  resetTokens  PasswordResetToken[]
+  pages        Page[]
+  posts        Post[]
+  media        Media[]
+  revisions    Revision[]
+}
+
+model Session {
+  id        String   @id // sha256 del token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id // sha256 del token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Site {
+  id            String       @id @default(cuid())
+  name          String
+  slug          String       @unique
+  domain        String?      @unique
+  tagline       String       @default("")
+  language      String       @default("es")
+  /// Identificador del tema: aurora | clasico | minimal
+  theme         String       @default("aurora")
+  /// Colores, tipografías, radio, estilo de cabecera…
+  themeSettings Json         @default("{}")
+  /// Email de contacto, redes sociales, pie, analítica, SEO por defecto…
+  settings      Json         @default("{}")
+  logoUrl       String?
+  faviconUrl    String?
+  homePageId    String?      @unique
+  homePage      Page?        @relation("HomePage", fields: [homePageId], references: [id], onDelete: SetNull)
+  maintenance   Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  members       Membership[]
+  pages         Page[]       @relation("SitePages")
+  posts         Post[]
+  categories    Category[]
+  tags          Tag[]
+  media         Media[]
+  menus         Menu[]
+  forms         Form[]
+  apiKeys       ApiKey[]
+}
+
+model Membership {
+  userId    String
+  siteId    String
+  role      SiteRole @default(EDITOR)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@id([userId, siteId])
+}
+
+model Page {
+  id             String        @id @default(cuid())
+  siteId         String
+  site           Site          @relation("SitePages", fields: [siteId], references: [id], onDelete: Cascade)
+  homeOf         Site?         @relation("HomePage")
+  title          String
+  slug           String
+  blocks         Json          @default("[]")
+  status         ContentStatus @default(DRAFT)
+  publishedAt    DateTime?
+  seoTitle       String?
+  seoDescription String?
+  ogImage        String?
+  noindex        Boolean       @default(false)
+  authorId       String?
+  author         User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([siteId, slug])
+  @@index([siteId, status])
+}
+
+model Post {
+  id             String        @id @default(cuid())
+  siteId         String
+  site           Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  title          String
+  slug           String
+  excerpt        String        @default("")
+  content        String        @default("")
+  coverUrl       String?
+  status         ContentStatus @default(DRAFT)
+  publishedAt    DateTime?
+  seoTitle       String?
+  seoDescription String?
+  noindex        Boolean       @default(false)
+  authorId       String?
+  author         User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  categories     Category[]
+  tags           Tag[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([siteId, slug])
+  @@index([siteId, status, publishedAt])
+}
+
+model Category {
+  id          String @id @default(cuid())
+  siteId      String
+  site        Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String @default("")
+  posts       Post[]
+
+  @@unique([siteId, slug])
+}
+
+model Tag {
+  id     String @id @default(cuid())
+  siteId String
+  site   Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name   String
+  slug   String
+  posts  Post[]
+
+  @@unique([siteId, slug])
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  path         String   @unique // ruta relativa dentro de UPLOAD_DIR
+  url          String
+  originalName String
+  mimeType     String
+  size         Int
+  width        Int?
+  height       Int?
+  alt          String   @default("")
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([siteId, createdAt])
+}
+
+model Menu {
+  id       String @id @default(cuid())
+  siteId   String
+  site     Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  /// header | footer
+  location String
+  items    Json   @default("[]")
+
+  @@unique([siteId, location])
+}
+
+model Form {
+  id             String           @id @default(cuid())
+  siteId         String
+  site           Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String
+  fields         Json             @default("[]")
+  submitLabel    String           @default("Enviar")
+  successMessage String           @default("¡Gracias! Hemos recibido tu mensaje.")
+  notifyEmails   String           @default("")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  submissions    FormSubmission[]
+
+  @@unique([siteId, slug])
+}
+
+model FormSubmission {
+  id        String   @id @default(cuid())
+  formId    String
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  data      Json
+  ip        String?
+  userAgent String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([formId, createdAt])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  siteId     String
+  site       Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name       String
+  keyHash    String    @unique
+  prefix     String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+/// Historial de versiones de páginas y entradas
+model Revision {
+  id         String   @id @default(cuid())
+  entityType String // page | post
+  entityId   String
+  data       Json
+  authorId   String?
+  author     User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+}

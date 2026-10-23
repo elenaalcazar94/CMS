@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: light; }
+  body { @apply bg-zinc-50 text-zinc-900 antialiased; }
+  ::selection { @apply bg-brand-200; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium
+      transition-all duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20
+      disabled:pointer-events-none disabled:opacity-50 select-none;
+  }
+  .btn-primary { @apply btn bg-brand-600 text-white shadow-sm shadow-brand-900/10 hover:bg-brand-700 active:scale-[.98]; }
+  .btn-secondary { @apply btn border border-zinc-200 bg-white text-zinc-800 shadow-sm hover:bg-zinc-50 hover:border-zinc-300 active:scale-[.98]; }
+  .btn-ghost { @apply btn text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-danger-ghost { @apply btn text-red-600 hover:bg-red-50; }
+  .btn-sm { @apply px-2.5 py-1.5 text-xs rounded-md; }
+  .btn-icon { @apply btn p-2; }
+
+  .input {
+    @apply block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm
+      placeholder:text-zinc-400 transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15
+      disabled:bg-zinc-50 disabled:text-zinc-500;
+  }
+  textarea.input { @apply min-h-[88px] leading-relaxed; }
+  select.input { @apply pr-8; }
+  .label { @apply mb-1.5 block text-[13px] font-medium text-zinc-700; }
+  .help { @apply mt-1.5 text-xs text-zinc-500; }
+
+  .card { @apply rounded-xl border border-zinc-200/80 bg-white shadow-card; }
+  .card-pad { @apply p-5 sm:p-6; }
+
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold; }
+  .badge-green { @apply badge bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15; }
+  .badge-gray { @apply badge bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-500/10; }
+  .badge-amber { @apply badge bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/15; }
+  .badge-brand { @apply badge bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-600/15; }
+  .badge-blue { @apply badge bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-600/15; }
+
+  .table-base { @apply w-full text-left text-sm; }
+  .table-base th { @apply border-b border-zinc-100 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500; }
+  .table-base td { @apply border-b border-zinc-100 px-4 py-3 align-middle; }
+  .table-base tr:last-child td { @apply border-0; }
+  .table-base tbody tr { @apply transition-colors hover:bg-zinc-50/70; }
+
+  .nav-link { @apply flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900; }
+  .nav-link.active { @apply bg-brand-50 text-brand-700; }
+}
+
+/* Editor de texto enriquecido (TipTap) */
+.rte .ProseMirror { outline: none; min-height: 140px; padding: 12px 14px; font-size: 14.5px; line-height: 1.65; }
+.rte.rte-lg .ProseMirror { min-height: 420px; font-size: 17px; padding: 8px 2px; }
+.rte .ProseMirror > * + * { margin-top: .7em; }
+.rte .ProseMirror h2 { font-size: 1.5em; font-weight: 700; line-height: 1.25; margin-top: 1.2em; }
+.rte .ProseMirror h3 { font-size: 1.2em; font-weight: 700; margin-top: 1em; }
+.rte .ProseMirror ul { list-style: disc; padding-left: 1.4em; }
+.rte .ProseMirror ol { list-style: decimal; padding-left: 1.4em; }
+.rte .ProseMirror a { color: #5f2cf5; text-decoration: underline; }
+.rte .ProseMirror blockquote { border-left: 3px solid #d5ceff; padding-left: 14px; color: #52525b; font-style: italic; }
+.rte .ProseMirror img { max-width: 100%; border-radius: 10px; }
+.rte .ProseMirror img.ProseMirror-selectednode { outline: 3px solid #9175ff; }
+.rte .ProseMirror hr { border: 0; border-top: 1px solid #e4e4e7; margin: 1.5em 0; }
+.rte .ProseMirror code { background: #f4f4f5; padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+.rte .ProseMirror pre { background: #18181b; color: #f4f4f5; padding: 12px; border-radius: 8px; }
+.rte .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #a1a1aa; float: left; height: 0; pointer-events: none; }
+
+/* Lienzo del editor de páginas */
+.canvas-block { position: relative; cursor: pointer; }
+.canvas-block::after { content: ""; position: absolute; inset: 0; pointer-events: none; outline: 2px solid transparent; outline-offset: -2px; transition: outline-color .12s; z-index: 5; }
+.canvas-block:hover::after { outline-color: rgba(112, 71, 255, .45); }
+.canvas-block.selected::after { outline-color: #7047ff; outline-width: 2px; }
+.canvas-block a, .canvas-block button, .canvas-block input, .canvas-block textarea, .canvas-block select, .canvas-block iframe, .canvas-block summary { pointer-events: none; }
+.canvas-block .nx-reveal { animation: none; }
+
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+.animate-toast { animation: toast-in .2s ease-out; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade { animation: fade-in .15s ease-out; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+.animate-pop { animation: pop-in .18s cubic-bezier(.2,.8,.2,1); }
+.canvas-block .cb-tools, .canvas-block .cb-tools * { pointer-events: auto; }
