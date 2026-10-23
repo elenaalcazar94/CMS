@@ -83,6 +83,11 @@ model Site {
   homePageId    String?      @unique
   homePage      Page?        @relation("HomePage", fields: [homePageId], references: [id], onDelete: SetNull)
   maintenance   Boolean      @default(false)
+  /// blocks: web hecha con el editor de bloques · custom: web a medida subida en HTML
+  kind          String       @default("blocks")
+  /// Contenidos compartidos por todas las páginas de una web a medida (cabecera, pie…)
+  globalFields  Json         @default("{}")
+  templateFiles TemplateFile[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   members       Membership[]
@@ -115,6 +120,9 @@ model Page {
   title          String
   slug           String
   blocks         Json          @default("[]")
+  /// Web a medida: archivo HTML que usa como plantilla y contenidos editados
+  template       String?
+  fields         Json          @default("{}")
   status         ContentStatus @default(DRAFT)
   publishedAt    DateTime?
   seoTitle       String?
@@ -260,4 +268,24 @@ model Revision {
   createdAt  DateTime @default(now())
 
   @@index([entityType, entityId, createdAt])
+}
+
+/// Archivos de una web a medida (HTML, CSS, JS, imágenes…)
+model TemplateFile {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  path      String
+  mimeType  String
+  size      Int
+  /// HTML ya preparado (con las zonas editables marcadas). Vacío para el resto de archivos.
+  html      String?
+  /// Clave en el almacenamiento de archivos (CSS, JS, imágenes…)
+  storageKey String?
+  /// Título detectado y número de zonas editables (solo HTML)
+  title     String?
+  fieldCount Int     @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, path])
 }

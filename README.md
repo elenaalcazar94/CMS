@@ -16,6 +16,31 @@ Gestor de contenidos multi-sitio para agencias. Desde un solo panel gestionas la
 - **API headless** de solo lectura con claves por sitio, para webs hechas a medida (Next.js, Astro…).
 - Modo mantenimiento, aviso de cookies, código personalizado (analítica), recuperación de contraseña por email.
 
+## Webs a medida (HTML)
+
+Además del editor de bloques, un sitio puede ser una **web a medida**: subes tu web hecha a mano (HTML, CSS, JS e imágenes) desde *Archivos de la web*, como carpeta o como `.zip`, y el CMS:
+
+- crea una página por cada `.html` (`index.html` es la portada; los enlaces a `x.html` pasan a ser `/x`);
+- detecta automáticamente lo editable: títulos, párrafos, botones, enlaces, imágenes y fondos;
+- detecta las listas (elementos hermanos con la misma clase, como tarjetas) para que el cliente añada, quite y reordene elementos;
+- comparte la cabecera, el menú y el pie entre todas las páginas;
+- conecta los `<form>` sin `action` a la bandeja de *Mensajes*;
+- permite crear páginas nuevas usando cualquier HTML como plantilla (p. ej. un proyecto nuevo con `proyecto.html`).
+
+El cliente edita sobre la propia web: hace clic en un texto y escribe, o en una imagen y la cambia.
+
+Para tener control total, marca tú las zonas con atributos (si hay alguno, la detección automática se desactiva):
+
+| Atributo | Uso |
+| --- | --- |
+| `data-cms="clave"` | Campo editable. Tipo automático: `img` → imagen, `a` → enlace, resto → texto |
+| `data-cms-type="html"` | Texto con párrafos y listas |
+| `data-cms-bg="clave"` | Imagen de fondo editable (en `style="background-image:url(...)"`) |
+| `data-cms-repeat="clave"` | En cada elemento de una lista editable |
+| `data-cms-global` | Zona común a todas las páginas |
+| `data-cms-collection="proyecto"` | Lista automática de las páginas creadas con `proyecto.html`. Dentro, usa `data-cms-field="title"`, `description`, `image`, `url`, `date` o la clave de cualquier campo |
+| `data-cms-form="contacto"` | Conecta un formulario a *Mensajes* |
+
 ## Tecnología
 
 Next.js 15 (App Router) · React 19 · TypeScript · PostgreSQL + Prisma · Tailwind CSS · TipTap · dnd-kit.

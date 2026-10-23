@@ -33,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     role: isSuper ? "SUPERADMIN" : s.members[0].role,
     url: publicSiteUrl(s),
     unread: unreadBySite[s.id] ?? 0,
+    kind: s.kind,
   }));
 
   return (

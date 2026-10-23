@@ -22,9 +22,9 @@ export const resolveSite = cache(async (param: string) => {
 });
 
 /** Prefijo de los enlaces internos: "" en dominio propio, "/s/slug" en vista previa. */
-export async function siteBase(param: string) {
+export async function siteBase(param: string, prefix: "s" | "c" = "s") {
   const h = await headers();
-  return h.get("x-nido-domain") ? "" : `/s/${param}`;
+  return h.get("x-nido-domain") ? "" : `/${prefix}/${param}`;
 }
 
 export function siteHref(base: string, url?: string | null) {
@@ -34,9 +34,14 @@ export function siteHref(base: string, url?: string | null) {
 }
 
 /** URL pública absoluta de un sitio. */
-export function publicSiteUrl(site: { slug: string; domain: string | null }) {
+export function publicSiteUrl(site: { slug: string; domain: string | null; kind?: string }) {
   if (site.domain) return `https://${site.domain}`;
   const root = process.env.ROOT_DOMAIN;
   if (root) return `https://${site.slug}.${root}`;
-  return `${(process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "")}/s/${site.slug}`;
+  return `${(process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "")}${previewBase(site)}`;
+}
+
+/** Ruta de vista previa en el dominio del panel: /s/slug (bloques) o /c/slug (web a medida). */
+export function previewBase(site: { slug: string; kind?: string }) {
+  return `/${site.kind === "custom" ? "c" : "s"}/${site.slug}`;
 }

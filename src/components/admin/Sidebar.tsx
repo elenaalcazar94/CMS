@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, FileText, Newspaper, Tags, ImageIcon, Inbox, ClipboardList, Menu as MenuIcon, Palette, Settings,
-  ExternalLink, ChevronsUpDown, Check, Plus, Globe, Users, LogOut, UserCircle, Sparkles, X, Menu,
+  ExternalLink, FolderCode, ChevronsUpDown, Check, Plus, Globe, Users, LogOut, UserCircle, Sparkles, X, Menu,
 } from "lucide-react";
 import type { SiteRole } from "@prisma/client";
 import { can, type Capability } from "@/lib/permissions";
@@ -12,19 +12,20 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "./ui";
 import { logout } from "@/app/actions/auth";
 
-export type SidebarSite = { id: string; name: string; slug: string; role: SiteRole | "SUPERADMIN"; url: string; unread: number };
+export type SidebarSite = { id: string; name: string; slug: string; role: SiteRole | "SUPERADMIN"; url: string; unread: number; kind: string };
 type Props = { user: { name: string; email: string; role: string }; sites: SidebarSite[] };
 
-const SITE_NAV: { href: string; label: string; icon: React.ElementType; cap?: Capability; exact?: boolean; badge?: boolean }[] = [
+const SITE_NAV: { href: string; label: string; icon: React.ElementType; cap?: Capability; exact?: boolean; badge?: boolean; only?: "blocks" | "custom" }[] = [
   { href: "", label: "Escritorio", icon: LayoutDashboard, exact: true },
   { href: "/pages", label: "Páginas", icon: FileText, cap: "pages.edit" },
-  { href: "/posts", label: "Blog", icon: Newspaper, cap: "posts" },
-  { href: "/taxonomies", label: "Categorías y etiquetas", icon: Tags, cap: "posts" },
+  { href: "/custom", label: "Archivos de la web", icon: FolderCode, cap: "appearance", only: "custom" },
+  { href: "/posts", label: "Blog", icon: Newspaper, cap: "posts", only: "blocks" },
+  { href: "/taxonomies", label: "Categorías y etiquetas", icon: Tags, cap: "posts", only: "blocks" },
   { href: "/media", label: "Medios", icon: ImageIcon, cap: "media" },
   { href: "/messages", label: "Mensajes", icon: Inbox, cap: "messages", badge: true },
   { href: "/forms", label: "Formularios", icon: ClipboardList, cap: "forms" },
-  { href: "/menus", label: "Menús", icon: MenuIcon, cap: "menus" },
-  { href: "/appearance", label: "Apariencia", icon: Palette, cap: "appearance" },
+  { href: "/menus", label: "Menús", icon: MenuIcon, cap: "menus", only: "blocks" },
+  { href: "/appearance", label: "Apariencia", icon: Palette, cap: "appearance", only: "blocks" },
   { href: "/settings", label: "Ajustes", icon: Settings, cap: "settings" },
 ];
 
@@ -112,7 +113,7 @@ export function Sidebar({ user, sites }: Props) {
       <nav className="scrollbar-thin mt-4 flex-1 space-y-0.5 overflow-y-auto px-3">
         {current ? (
           <>
-            {SITE_NAV.filter((n) => !n.cap || can(current.role, n.cap)).map((n) => {
+            {SITE_NAV.filter((n) => (!n.cap || can(current.role, n.cap)) && (!n.only || n.only === (current.kind === "custom" ? "custom" : "blocks"))).map((n) => {
               const href = `/admin/s/${current.id}${n.href}`;
               const active = n.exact ? pathname === href : pathname.startsWith(href);
               return (

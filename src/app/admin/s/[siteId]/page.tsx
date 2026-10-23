@@ -35,19 +35,26 @@ export default async function SiteDashboard({ params }: { params: Promise<{ site
 
   const url = publicSiteUrl(site);
   const isAdmin = can(role, "settings");
-  const checklist = [
+  const custom = site.kind === "custom";
+  const files = custom ? await db.templateFile.count({ where: { siteId } }) : 0;
+  const checklist = (custom ? [
+    { done: files > 0, label: "Sube los archivos de tu web", href: "custom", cap: can(role, "appearance") },
+    { done: !!site.homePageId, label: "Elige la página de portada", href: "settings", cap: isAdmin },
+    { done: !!settings.seoDescription, label: "Añade la descripción SEO del sitio", href: "settings?tab=seo", cap: isAdmin },
+    { done: !!site.domain, label: "Conecta el dominio propio", href: "settings", cap: isAdmin },
+  ] : [
     { done: !!site.logoUrl, label: "Sube el logotipo", href: "appearance", cap: can(role, "appearance") },
     { done: !!site.homePageId, label: "Elige la página de portada", href: "settings", cap: isAdmin },
     { done: menus > 0, label: "Configura el menú principal", href: "menus", cap: can(role, "menus") },
     { done: forms > 0, label: "Crea un formulario de contacto", href: "forms", cap: can(role, "forms") },
     { done: !!settings.seoDescription, label: "Añade la descripción SEO del sitio", href: "settings?tab=seo", cap: isAdmin },
     { done: !!site.domain, label: "Conecta el dominio propio", href: "settings", cap: isAdmin },
-  ].filter((c) => c.cap);
+  ]).filter((c) => c.cap);
   const doneCount = checklist.filter((c) => c.done).length;
 
   const stats = [
     { label: "Páginas publicadas", value: pages, icon: FileText, href: "pages", cap: can(role, "pages.edit") },
-    { label: "Entradas publicadas", value: posts, icon: Newspaper, href: "posts", cap: can(role, "posts") },
+    { label: "Entradas publicadas", value: posts, icon: Newspaper, href: "posts", cap: can(role, "posts") && !custom },
     { label: "Mensajes sin leer", value: unread, icon: Inbox, href: "messages", cap: can(role, "messages"), highlight: unread > 0 },
     { label: "Archivos", value: media, icon: ImageIcon, href: "media", cap: can(role, "media") },
   ].filter((s) => s.cap);
@@ -59,7 +66,7 @@ export default async function SiteDashboard({ params }: { params: Promise<{ site
         description={<a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-brand-600">{url.replace(/^https?:\/\//, "")} <ExternalLink className="h-3 w-3" /></a>}
         actions={
           <>
-            {can(role, "posts") && <NewPostButton action={createPost.bind(null, siteId)} className="btn-secondary"><PenLine className="h-4 w-4" /> Escribir entrada</NewPostButton>}
+            {can(role, "posts") && !custom && <NewPostButton action={createPost.bind(null, siteId)} className="btn-secondary"><PenLine className="h-4 w-4" /> Escribir entrada</NewPostButton>}
             {can(role, "pages.manage") && <Link href={`/admin/s/${siteId}/pages?new=1`} className="btn-primary"><Plus className="h-4 w-4" /> Nueva página</Link>}
           </>
         }
@@ -148,8 +155,9 @@ export default async function SiteDashboard({ params }: { params: Promise<{ site
               {[
                 { label: "Ver la web", href: url, icon: ExternalLink, ext: true, cap: true },
                 { label: "Subir archivos", href: `/admin/s/${siteId}/media`, icon: Upload, cap: can(role, "media") },
-                { label: "Editar menú", href: `/admin/s/${siteId}/menus`, icon: FileText, cap: can(role, "menus") },
-                { label: "Cambiar diseño", href: `/admin/s/${siteId}/appearance`, icon: ImageIcon, cap: can(role, "appearance") },
+                { label: "Editar menú", href: `/admin/s/${siteId}/menus`, icon: FileText, cap: can(role, "menus") && !custom },
+                { label: "Cambiar diseño", href: `/admin/s/${siteId}/appearance`, icon: ImageIcon, cap: can(role, "appearance") && !custom },
+                { label: "Archivos de la web", href: `/admin/s/${siteId}/custom`, icon: FileText, cap: can(role, "appearance") && custom },
               ].filter((q) => q.cap).map((q) => (
                 <a key={q.label} href={q.href} target={q.ext ? "_blank" : undefined} rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2.5 text-[13px] font-medium text-zinc-700 transition hover:border-brand-300 hover:bg-brand-50/50 hover:text-brand-700">
                   <q.icon className="h-4 w-4" /> {q.label}

@@ -3,13 +3,15 @@ import { FileText, Home, Eye, Search } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireSite } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { publicSiteUrl } from "@/lib/site";
+import { publicSiteUrl, previewBase } from "@/lib/site";
 import { PageHeader, EmptyState, StatusBadge, Card } from "@/components/admin/ui";
 import { ConfirmButton } from "@/components/admin/client";
 import { publishState, timeAgo } from "@/lib/utils";
 import { deletePage, duplicatePage, setHomePage, createPage } from "@/app/actions/content";
 import { PAGE_TEMPLATES } from "@/lib/templates";
 import { NewPageDialog } from "./new-dialog";
+import { NewCustomPageDialog } from "./new-custom-dialog";
+import { createCustomPage } from "@/app/actions/custom";
 import { RowAction } from "./row-action";
 
 export const metadata = { title: "Páginas" };
@@ -26,15 +28,22 @@ export default async function PagesList({ params, searchParams }: { params: Prom
     include: { author: { select: { name: true } } },
   });
   const url = publicSiteUrl(site);
-  const preview = `/s/${site.slug}`;
-  const templates = PAGE_TEMPLATES.map(({ id, name, description }) => ({ id, name, description }));
+  const preview = previewBase(site);
+  const custom = site.kind === "custom";
+  const templates = custom
+    ? (await db.templateFile.findMany({ where: { siteId, html: { not: null } }, select: { path: true, title: true, fieldCount: true }, orderBy: { path: "asc" } }))
+        .filter((t) => t.path !== "404.html").map((t) => ({ path: t.path, title: t.title ?? t.path, fieldCount: t.fieldCount }))
+    : [];
+  const blockTemplates = PAGE_TEMPLATES.map(({ id, name, description }) => ({ id, name, description }));
 
   return (
     <>
       <PageHeader
         title="Páginas"
         description="Las páginas fijas de la web: inicio, servicios, contacto…"
-        actions={manage && <NewPageDialog action={createPage.bind(null, siteId)} templates={templates} defaultOpen={openNew === "1"} />}
+        actions={manage && (custom
+          ? <NewCustomPageDialog action={createCustomPage.bind(null, siteId)} templates={templates} defaultOpen={openNew === "1"} />
+          : <NewPageDialog action={createPage.bind(null, siteId)} templates={blockTemplates} defaultOpen={openNew === "1"} />)}
       />
       <Card>
         <div className="border-b border-zinc-100 p-3">
@@ -44,7 +53,12 @@ export default async function PagesList({ params, searchParams }: { params: Prom
           </form>
         </div>
         {pages.length === 0 ? (
-          <EmptyState icon={<FileText className="h-6 w-6" />} title={q ? "Sin resultados" : "Aún no hay páginas"} description={q ? "Prueba con otra búsqueda." : "Crea tu primera página a partir de una plantilla."} />
+          <EmptyState
+            icon={<FileText className="h-6 w-6" />}
+            title={q ? "Sin resultados" : "Aún no hay páginas"}
+            description={q ? "Prueba con otra búsqueda." : custom ? "Sube los archivos de tu web y se crearán las páginas automáticamente." : "Crea tu primera página a partir de una plantilla."}
+            action={!q && custom && can(role, "appearance") && <Link href={`/admin/s/${siteId}/custom`} className="btn-primary">Subir la web</Link>}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="table-base">
@@ -65,7 +79,7 @@ export default async function PagesList({ params, searchParams }: { params: Prom
                           </span>
                         </Link>
                       </td>
-                      <td className="hidden font-mono text-xs text-zinc-500 md:table-cell">/{isHome ? "" : p.slug}</td>
+                      <td className="hidden font-mono text-xs text-zinc-500 md:table-cell">/{isHome ? "" : p.slug}{custom && p.template && <span className="block font-sans text-[11px] text-zinc-400">plantilla {p.template}</span>}</td>
                       <td><StatusBadge state={publishState(p.status, p.publishedAt)} /></td>
                       <td className="hidden text-xs text-zinc-500 sm:table-cell">{timeAgo(p.updatedAt)}{p.author && <span className="block">{p.author.name}</span>}</td>
                       <td>

@@ -43,17 +43,18 @@ export async function createSite(fd: FormData) {
     if (await db.site.findUnique({ where: { slug } })) return { error: "Ya hay un sitio con ese identificador" };
     const theme = THEMES.some((t) => t.id === fd.get("theme")) ? String(fd.get("theme")) : "aurora";
     const domain = cleanDomain(String(fd.get("domain") ?? ""));
-    const starter = fd.get("starter") === "on";
+    const kind = fd.get("kind") === "custom" ? "custom" : "blocks";
+    const starter = kind === "blocks" && fd.get("starter") === "on";
 
     const site = await db.site.create({
       data: {
-        name, slug, domain, theme,
+        name, slug, domain, theme, kind,
         tagline: String(fd.get("tagline") ?? ""),
         settings: { ...DEFAULT_SETTINGS, contactEmail: String(fd.get("contactEmail") ?? "") } as Prisma.InputJsonValue,
       },
     });
     if (starter) await seedStarterContent(site.id, user.id, String(fd.get("contactEmail") ?? ""));
-    return { ok: true, message: "¡Sitio creado!", redirect: `/admin/s/${site.id}` };
+    return { ok: true, message: "¡Sitio creado!", redirect: kind === "custom" ? `/admin/s/${site.id}/custom` : `/admin/s/${site.id}` };
   });
 }
 
@@ -114,6 +115,7 @@ export async function updateSiteGeneral(siteId: string, fd: FormData) {
       maintenance: fd.get("maintenance") === "on",
       homePage: fd.get("homePageId") ? { connect: { id: String(fd.get("homePageId")) } } : { disconnect: true },
       domain: cleanDomain(String(fd.get("domain") ?? "")),
+      ...(fd.get("kind") === "custom" || fd.get("kind") === "blocks" ? { kind: String(fd.get("kind")) } : {}),
     };
     if (access.role === "SUPERADMIN" && fd.get("slug")) {
       const slug = slugify(String(fd.get("slug"))).replace(/\//g, "-");

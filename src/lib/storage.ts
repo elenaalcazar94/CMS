@@ -72,6 +72,29 @@ export async function saveUpload(siteId: string, file: File) {
   return { rel, buf, ext };
 }
 
+/** Guarda un archivo con una clave concreta (archivos de las webs a medida). */
+export async function putFile(rel: string, data: Uint8Array, contentType: string) {
+  if (useBlobStorage()) {
+    const store = await blobStore();
+    await store.set(rel, new Uint8Array(data).buffer as ArrayBuffer, { metadata: { contentType } });
+    return;
+  }
+  const full = path.resolve(UPLOAD_DIR, rel);
+  if (!full.startsWith(UPLOAD_DIR + path.sep)) throw new Error("Ruta no válida");
+  await fs.mkdir(path.dirname(full), { recursive: true });
+  await fs.writeFile(full, data);
+}
+
+/** Tipos de archivo admitidos en una web a medida, por extensión. */
+export const SITE_FILE_MIME: Record<string, string> = {
+  html: "text/html; charset=utf-8", htm: "text/html; charset=utf-8", css: "text/css; charset=utf-8",
+  js: "text/javascript; charset=utf-8", mjs: "text/javascript; charset=utf-8", json: "application/json",
+  map: "application/json", txt: "text/plain; charset=utf-8", xml: "application/xml", webmanifest: "application/manifest+json",
+  svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+  avif: "image/avif", ico: "image/x-icon", woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf",
+  eot: "application/vnd.ms-fontobject", mp4: "video/mp4", webm: "video/webm", mp3: "audio/mpeg", pdf: "application/pdf",
+};
+
 /** Devuelve el contenido de un archivo subido, o null si no existe. */
 export async function readUpload(rel: string): Promise<Uint8Array | null> {
   if (rel.split("/").some((part) => part === ".." || part === "")) return null;

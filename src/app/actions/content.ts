@@ -152,6 +152,11 @@ export async function restoreRevision(siteId: string, revisionId: string) {
     const data = rev.data as Record<string, unknown>;
     if (rev.entityType === "page") {
       const page = await db.page.findFirstOrThrow({ where: { id: rev.entityId, siteId } });
+      if (data.custom) {
+        await db.revision.create({ data: { entityType: "page", entityId: page.id, authorId: access.user.id, data: json({ title: page.title, fields: page.fields, custom: true }) } });
+        await db.page.update({ where: { id: page.id }, data: { title: String(data.title), fields: json(data.fields ?? {}) } });
+        return { ok: true, message: "Versión restaurada" };
+      }
       await saveRevision("page", page.id, { title: page.title, blocks: page.blocks, seoTitle: page.seoTitle, seoDescription: page.seoDescription }, access.user.id);
       await db.page.update({ where: { id: page.id }, data: { title: String(data.title), blocks: json(data.blocks), seoTitle: (data.seoTitle as string) ?? null, seoDescription: (data.seoDescription as string) ?? null } });
     } else {

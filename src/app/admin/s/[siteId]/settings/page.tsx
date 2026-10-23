@@ -157,6 +157,14 @@ async function General({ siteId, isSuper }: { siteId: string; isSuper: boolean }
           </div>
           <div className="sm:col-span-2"><label className="label">Eslogan</label><input name="tagline" className="input" defaultValue={site.tagline} /></div>
           <div className="sm:col-span-2">
+            <label className="label">Tipo de web</label>
+            <select name="kind" className="input" defaultValue={site.kind}>
+              <option value="blocks">Editor de bloques (temas de Nido)</option>
+              <option value="custom">Web a medida (HTML subido)</option>
+            </select>
+            <p className="help">Las páginas de cada tipo se conservan si cambias de uno a otro.</p>
+          </div>
+          <div className="sm:col-span-2">
             <label className="label">Página de portada</label>
             <select name="homePageId" className="input" defaultValue={site.homePageId ?? ""}>
               <option value="">— Automática (página «inicio») —</option>
