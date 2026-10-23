@@ -54,6 +54,15 @@ docker run --rm -v nido-cms_uploads:/u -v "$PWD":/b alpine tar czf /b/uploads-$(
 
 (El nombre del volumen depende de la carpeta del proyecto; compruébalo con `docker volume ls`.)
 
+## Puesta en producción en Netlify
+
+El proyecto incluye `netlify.toml`. En Netlify:
+
+- La **base de datos** la crea Netlify Database automáticamente, y en cada despliegue aplica las migraciones de `netlify/database/migrations/`. Si cambias `prisma/schema.prisma`, copia también la nueva migración SQL de `prisma/migrations/` a esa carpeta.
+- Los **archivos subidos** se guardan en Netlify Blobs.
+- Variables necesarias: `APP_URL` (URL del panel), `STORAGE_DRIVER=netlify` y `MAX_UPLOAD_MB=5` (Netlify no acepta subidas de más de ~6 MB).
+- **Dominios de clientes**: añade cada dominio en *Domain management* del proyecto de Netlify (como alias) y luego en *Ajustes → General* de la web en el CMS. Netlify genera el HTTPS.
+
 ## Desarrollo local
 
 ```bash

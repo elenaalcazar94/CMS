@@ -16,7 +16,7 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Panel de administración y vistas previas /s/slug
-  if (adminHosts().has(hostname)) return NextResponse.next();
+  if (adminHosts().has(hostname) || hostname.endsWith(".netlify.app")) return NextResponse.next();
 
   // Dominios de clientes: todo se sirve desde /s/<dominio>/...
   if (PASSTHROUGH.some((r) => r.test(pathname))) return NextResponse.next();
@@ -29,6 +29,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  runtime: "nodejs",
   matcher: ["/((?!_next/static|_next/image).*)"],
 };

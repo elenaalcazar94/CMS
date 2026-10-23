@@ -1,0 +1,19 @@
+# Despliegue en Netlify.
+# - Base de datos: Netlify Database (se crea sola; aplica netlify/database/migrations/ en cada despliegue).
+#   Si cambias prisma/schema.prisma, copia también la nueva migración SQL a netlify/database/migrations/.
+# - Variables (Project configuration → Environment variables):
+#     APP_URL         URL del panel, p. ej. https://nido-cms.netlify.app
+#     STORAGE_DRIVER  netlify  (archivos subidos en Netlify Blobs)
+#     MAX_UPLOAD_MB   5        (las funciones de Netlify aceptan peticiones de ~6 MB como máximo)
+#     SMTP_*          Opcional, para enviar emails
+
+[build]
+  command = "npm run build:netlify"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
