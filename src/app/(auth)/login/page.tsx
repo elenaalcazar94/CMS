@@ -6,6 +6,7 @@ import { login } from "@/app/actions/auth";
 import { ActionForm, Submit } from "@/components/admin/client";
 import { Toaster } from "@/components/admin/toast";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Iniciar sesión · Nido CMS" };
 
 export default async function LoginPage() {
