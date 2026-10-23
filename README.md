@@ -24,7 +24,7 @@ Además del editor de bloques, un sitio puede ser una **web a medida**: subes tu
 - detecta automáticamente lo editable: títulos, párrafos, botones, enlaces, imágenes y fondos;
 - detecta las listas (elementos hermanos con la misma clase, como tarjetas) para que el cliente añada, quite y reordene elementos;
 - comparte la cabecera, el menú y el pie entre todas las páginas;
-- conecta los `<form>` sin `action` a la bandeja de *Mensajes*;
+- convierte los `<form>` de la web en formularios internos del CMS (bandeja de *Mensajes* y avisos por email). Si el `action` apunta a una página propia (p. ej. `gracias.html`), tras enviar se redirige a ella. Los formularios que envían a servicios externos (Mailchimp, pasarelas…) no se tocan;
 - permite crear páginas nuevas usando cualquier HTML como plantilla (p. ej. un proyecto nuevo con `proyecto.html`).
 
 El cliente edita sobre la propia web: hace clic en un texto y escribe, o en una imagen y la cambia.

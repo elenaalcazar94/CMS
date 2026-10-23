@@ -218,7 +218,12 @@ function setMeta($: $T, page: RenderInput["page"]) {
   if (page.canonical && !$('link[rel="canonical"]').length) head.append($('<link rel="canonical">').attr("href", page.canonical));
 }
 
-const FORM_SCRIPT = `<script>(function(){document.querySelectorAll('form[data-nido-form]').forEach(function(f){f.addEventListener('submit',function(e){e.preventDefault();var b=f.querySelector('[type=submit],button:not([type])');if(b)b.disabled=true;var d={};new FormData(f).forEach(function(v,k){d[k]=v});f.querySelectorAll('input[type=checkbox]').forEach(function(c){if(c.name&&!c.checked&&!(c.name in d))d[c.name]=''});fetch('/api/public/forms/'+f.getAttribute('data-nido-form'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){if(x.ok){var p=document.createElement('p');p.className='nido-form-ok';p.textContent=x.j.message||'¡Gracias!';f.replaceWith(p)}else{alert(x.j.error||'Revisa el formulario');if(b)b.disabled=false}}).catch(function(){alert('No se ha podido enviar. Inténtalo de nuevo.');if(b)b.disabled=false})})})})();</script>`;
+/*
+ * Conecta los formularios de la web al CMS. Se ejecuta antes que el JavaScript propio de la web
+ * (fase de captura) y sin bloquearlo: si la web valida y redirige a su página de gracias,
+ * el envío sigue en segundo plano (keepalive).
+ */
+const FORM_SCRIPT = `<script>(function(){document.querySelectorAll('form[data-nido-form]').forEach(function(f){f.addEventListener('submit',function(e){if(f.__nido)return;if(!f.checkValidity())return;var hp=(f.getAttribute('data-nido-hp')||'').split(' ').filter(Boolean);for(var i=0;i<hp.length;i++){var t=f.elements[hp[i]];if(t&&t.value){e.preventDefault();return}}var d={};new FormData(f).forEach(function(v,k){if(hp.indexOf(k)<0)d[k]=v});f.querySelectorAll('input[type=checkbox]').forEach(function(c){if(c.name&&!(c.name in d))d[c.name]=''});e.preventDefault();f.__nido=true;var b=f.querySelector('[type=submit],button:not([type])');if(b)b.disabled=true;var to=f.hasAttribute('data-nido-redirect')?f.getAttribute('action'):null;fetch('/api/public/forms/'+f.getAttribute('data-nido-form'),{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){if(x.ok){if(to){location.href=to}else{var p=document.createElement('p');p.className='nido-form-ok';p.setAttribute('role','status');p.textContent=x.j.message||'¡Gracias!';f.replaceWith(p)}}else{f.__nido=false;if(b)b.disabled=false;alert(x.j.error||'Revisa el formulario')}}).catch(function(){f.__nido=false;if(b)b.disabled=false;alert('No se ha podido enviar. Inténtalo de nuevo.')})},true)})})();</script>`;
 
 const EDIT_CSS = `<style id="nido-edit">
 [data-cms],[data-cms-bg]{transition:outline-color .12s}
@@ -242,7 +247,10 @@ export function renderCustomPage(input: RenderInput) {
 
   $(`form[${FORM_ATTR}]`).each((_, el) => {
     const id = input.forms[$(el).attr(FORM_ATTR)!];
-    if (id) $(el).attr("data-nido-form", id);
+    if (!id) return;
+    $(el).attr("data-nido-form", id);
+    if ($(el).attr("data-cms-redirect")) $(el).attr("data-nido-redirect", "");
+    if ($(el).attr("data-cms-hp")) $(el).attr("data-nido-hp", $(el).attr("data-cms-hp")!);
   });
 
   applyBase($, input.base);

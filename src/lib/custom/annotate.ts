@@ -214,23 +214,41 @@ function labelFor($: cheerio.CheerioAPI, form: cheerio.Cheerio<Element>, el: Ele
   const id = el.attribs.id;
   const byFor = id ? form.find(`label[for="${id}"]`).first().text().trim() : "";
   const wrap = $(el).closest("label").text().trim();
-  return (byFor || wrap || el.attribs.placeholder || el.attribs["aria-label"] || el.attribs.name).replace(/\s*\*\s*$/, "").slice(0, 120);
+  return (byFor || wrap || el.attribs.placeholder || el.attribs["aria-label"] || el.attribs.name).replace(/\s+/g, " ").replace(/\s*\*\s*$/, "").trim().slice(0, 120);
+}
+
+/** Campo trampa antispam: oculto a las personas, solo lo rellenan los bots. */
+function isHoneypot($: cheerio.CheerioAPI, input: Element) {
+  const name = (input.attribs.name ?? "").toLowerCase();
+  if (["_hp", "honeypot", "hp", "website", "url_trap", "bot-field"].includes(name)) return true;
+  if (input.attribs.tabindex === "-1" && input.attribs.autocomplete === "off") return true;
+  return $(input).closest('[aria-hidden="true"], .hp, .honeypot, [hidden]').length > 0;
 }
 
 function detectForms($: cheerio.CheerioAPI, pageSlug: string): AnnotatedForm[] {
   const forms: AnnotatedForm[] = [];
   $("form").each((i, el) => {
     const $f = $(el);
+    // Las rutas ya están reescritas: "/gracias" es una página de la web; "https://…" es un servicio externo
     const action = ($f.attr("action") ?? "").trim();
     const explicit = $f.attr(FORM_ATTR);
-    if (!explicit && action && action !== "#") return; // formulario externo (newsletter, pasarela…)
+    const local = !action || action === "#" || (action.startsWith("/") && !action.startsWith("//"));
+    if (!explicit && !local) return; // formulario externo (newsletter, pasarela de pago…)
+    if (!explicit && (($f.attr("method") ?? "get").toLowerCase() === "get") && $f.find("input[type=search], input[name=q], input[name=s]").length) return; // buscadores
     const slug = explicit || `${pageSlug || "inicio"}-formulario${i ? `-${i + 1}` : ""}`.replace(/\//g, "-");
     $f.attr(FORM_ATTR, slug);
+    // Si el formulario llevaba a una página propia (p. ej. gracias.html), se mantiene como página de destino
+    if (action && action !== "#" && local) $f.attr("data-cms-redirect", action);
     const fields: FormField[] = [];
+    const traps: string[] = [];
     $f.find("input[name], select[name], textarea[name]").each((_, input) => {
       const t = (input.attribs.type ?? "").toLowerCase();
       if (["submit", "button", "reset", "hidden", "file", "image", "password"].includes(t)) return;
       const name = input.attribs.name;
+      if (isHoneypot($, input)) {
+        traps.push(name);
+        return;
+      }
       if (fields.some((x) => x.id === name)) return;
       const type: FormFieldType =
         input.tagName === "textarea" ? "textarea"
@@ -245,8 +263,9 @@ function detectForms($: cheerio.CheerioAPI, pageSlug: string): AnnotatedForm[] {
         width: "full",
       });
     });
+    if (traps.length) $f.attr("data-cms-hp", traps.join(" "));
     const name = $f.attr("data-cms-form-name") || $f.attr("aria-label") || $f.closest("section").find("h1,h2,h3").first().text().trim() || "Formulario";
-    forms.push({ slug, name: `${name.slice(0, 60)} (${pageSlug || "inicio"})`, fields });
+    forms.push({ slug, name: `${name.replace(/\s+/g, " ").slice(0, 60)} (${pageSlug || "inicio"})`, fields });
   });
   return forms;
 }
