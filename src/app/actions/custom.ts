@@ -101,6 +101,10 @@ function cleanValue(key: string, v: unknown, depth = 0): unknown {
 function cleanMap(m: Record<string, unknown>, depth = 0): FieldMap {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(m).slice(0, 1000)) {
+    if (k === "_o") {
+      if (Number.isInteger(v) && (v as number) >= 0 && (v as number) < 1000) out._o = v;
+      continue;
+    }
     const val = cleanValue(k.slice(0, 120), v, depth);
     if (val !== null) out[k.slice(0, 120)] = val;
   }

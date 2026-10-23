@@ -75,19 +75,26 @@ function applyScope($: $T, root: cheerio.Cheerio<Element>, values: Record<string
   }
 }
 
+/** Atributo interno: índice del elemento original del que procede cada elemento de una lista. */
+const ORIGIN_ATTR = "data-cms-o";
+
 function applyRepeats($: $T, fields: FieldMap, globals: FieldMap) {
   const seen = new Set<string>();
   $(`[${REPEAT_ATTR}]`).each((_, el) => {
     const key = $(el).attr(REPEAT_ATTR)!;
     if (seen.has(key) || $(el).parents(`[${REPEAT_ATTR}]`).length) return;
     seen.add(key);
+    const items = $(`[${REPEAT_ATTR}="${key}"]`).filter((_, x) => $(x).parents(`[${REPEAT_ATTR}]`).length === 0);
+    items.each((i, x) => void $(x).attr(ORIGIN_ATTR, String(i)));
     const map = $(el).is(`[${GLOBAL_MARK}]`) ? globals : fields;
     const value = map[key];
     if (!Array.isArray(value) || value.length === 0) return;
-    const items = $(`[${REPEAT_ATTR}="${key}"]`).filter((_, x) => $(x).parents(`[${REPEAT_ATTR}]`).length === 0);
-    const template = items.first().clone();
+    // Cada elemento se pinta a partir de su original (o del primero si es uno nuevo), nunca mezclando estructuras
+    const originals = items.toArray().map((x) => $(x).clone());
     const clones = value.map((item) => {
-      const c = template.clone();
+      const o = Number((item as Record<string, unknown>)._o);
+      const base = Number.isInteger(o) && originals[o] ? originals[o] : originals[0];
+      const c = base.clone();
       applyScope($, c, item as Record<string, unknown>);
       return c;
     });
@@ -223,7 +230,7 @@ function setMeta($: $T, page: RenderInput["page"]) {
  * (fase de captura) y sin bloquearlo: si la web valida y redirige a su página de gracias,
  * el envío sigue en segundo plano (keepalive).
  */
-const FORM_SCRIPT = `<script>(function(){document.querySelectorAll('form[data-nido-form]').forEach(function(f){f.addEventListener('submit',function(e){if(f.__nido)return;if(!f.checkValidity())return;var hp=(f.getAttribute('data-nido-hp')||'').split(' ').filter(Boolean);for(var i=0;i<hp.length;i++){var t=f.elements[hp[i]];if(t&&t.value){e.preventDefault();return}}var d={};new FormData(f).forEach(function(v,k){if(hp.indexOf(k)<0)d[k]=v});f.querySelectorAll('input[type=checkbox]').forEach(function(c){if(c.name&&!(c.name in d))d[c.name]=''});e.preventDefault();f.__nido=true;var b=f.querySelector('[type=submit],button:not([type])');if(b)b.disabled=true;var to=f.hasAttribute('data-nido-redirect')?f.getAttribute('action'):null;fetch('/api/public/forms/'+f.getAttribute('data-nido-form'),{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){if(x.ok){if(to){location.href=to}else{var p=document.createElement('p');p.className='nido-form-ok';p.setAttribute('role','status');p.textContent=x.j.message||'¡Gracias!';f.replaceWith(p)}}else{f.__nido=false;if(b)b.disabled=false;alert(x.j.error||'Revisa el formulario')}}).catch(function(){f.__nido=false;if(b)b.disabled=false;alert('No se ha podido enviar. Inténtalo de nuevo.')})},true)})})();</script>`;
+const FORM_SCRIPT = `<script>(function(){document.querySelectorAll('form[data-nido-form]').forEach(function(f){f.addEventListener('submit',function(e){if(f.__nido){e.preventDefault();e.stopImmediatePropagation();return}if(!f.checkValidity())return;var hp=(f.getAttribute('data-nido-hp')||'').split(' ').filter(Boolean);for(var i=0;i<hp.length;i++){var t=f.elements[hp[i]];if(t&&t.value)return}e.preventDefault();e.stopImmediatePropagation();var d={};new FormData(f).forEach(function(v,k){if(hp.indexOf(k)<0)d[k]=v});f.querySelectorAll('input[type=checkbox]').forEach(function(c){if(c.name&&!(c.name in d))d[c.name]=''});f.__nido=true;var b=f.querySelector('[type=submit],button:not([type])');if(b)b.disabled=true;f.setAttribute('aria-busy','true');var st=f.querySelector('[role=status],.status');if(st)st.textContent='Enviando…';var to=f.hasAttribute('data-nido-redirect')?f.getAttribute('action'):null;var fail=function(m){f.__nido=false;f.removeAttribute('aria-busy');if(b)b.disabled=false;if(st)st.textContent=m;else alert(m)};fetch('/api/public/forms/'+f.getAttribute('data-nido-form'),{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){if(x.ok){if(to){location.href=to}else{var p=document.createElement('p');p.className='nido-form-ok';p.setAttribute('role','status');p.textContent=x.j.message||'¡Gracias!';f.replaceWith(p)}}else{fail(x.j.error||'Revisa el formulario.')}}).catch(function(){fail('No se ha podido enviar. Inténtalo de nuevo.')})},true)})})();</script>`;
 
 const EDIT_CSS = `<style id="nido-edit">
 [data-cms],[data-cms-bg]{transition:outline-color .12s}

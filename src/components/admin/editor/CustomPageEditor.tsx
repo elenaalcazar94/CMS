@@ -139,6 +139,8 @@ export function CustomPageEditor(props: Props) {
       const all = Array.from(d.querySelectorAll<HTMLElement>(`[${REPEAT_ATTR}="${key}"]`)).filter((x) => !x.parentElement?.closest(`[${REPEAT_ATTR}]`));
       target(item)[key] = all.map((it) => {
         const obj: Record<string, unknown> = {};
+        const origin = Number(it.getAttribute("data-cms-o"));
+        if (Number.isInteger(origin)) obj._o = origin;
         scope(it, FIELD_ATTR).forEach((f) => (obj[f.getAttribute(FIELD_ATTR)!] = readField(f)));
         scope(it, BG_ATTR).forEach((f) => (obj[bgKey(f.getAttribute(BG_ATTR)!)] = strip(bgUrl(f))));
         return obj;

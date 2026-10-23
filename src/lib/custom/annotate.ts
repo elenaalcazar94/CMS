@@ -101,24 +101,26 @@ function hasCandidate($: cheerio.CheerioAPI, el: Element): boolean {
 }
 
 /** Marca los campos de un subárbol en orden de lectura. */
-function markFields($: cheerio.CheerioAPI, root: Element, nextKey: () => string, global: boolean, skipRoot = false) {
+type KeyFn = (el: Element, kind: "bg" | "img" | "text") => string;
+
+function markFields($: cheerio.CheerioAPI, root: Element, nextKey: KeyFn, global: boolean, skipRoot = false) {
   const visit = (el: Element, isRoot: boolean) => {
     if (SKIP.has(el.tagName)) return;
     if (!isRoot && el.attribs?.[REPEAT_ATTR] !== undefined) return; // las listas se marcan aparte
     const $el = $(el);
     if (hasBackground(el)) {
-      $el.attr(BG_ATTR, nextKey());
+      $el.attr(BG_ATTR, nextKey(el, "bg"));
       if (global) $el.attr(GLOBAL_MARK, "");
     }
     if (el.tagName === "img") {
       if (el.attribs.src || el.attribs["data-src"]) {
-        $el.attr(FIELD_ATTR, nextKey()).attr(TYPE_ATTR, "image");
+        $el.attr(FIELD_ATTR, nextKey(el, "img")).attr(TYPE_ATTR, "image");
         if (global) $el.attr(GLOBAL_MARK, "");
       }
       return;
     }
     if (!(isRoot && skipRoot) && isTextField($, el)) {
-      $el.attr(FIELD_ATTR, nextKey()).attr(TYPE_ATTR, el.tagName === "a" ? "link" : "text");
+      $el.attr(FIELD_ATTR, nextKey(el, "text")).attr(TYPE_ATTR, el.tagName === "a" ? "link" : "text");
       if (global) $el.attr(GLOBAL_MARK, "");
       return;
     }
@@ -127,12 +129,34 @@ function markFields($: cheerio.CheerioAPI, root: Element, nextKey: () => string,
   visit(root, true);
 }
 
+const STATE_CLASSES = new Set(["on", "off", "active", "is-active", "current", "is-current", "selected", "is-selected", "show", "shown", "open", "is-open", "visible", "is-visible", "revealed", "animated", "aos-animate"]);
+
 function signature(el: Element) {
-  const cls = (el.attribs?.class ?? "").split(/\s+/).filter(Boolean).sort().join(".");
+  if (INLINE.has(el.tagName)) return ""; // trozos de un mismo texto (p. ej. líneas de un titular) no son listas
+  // Las clases de estado (activo, visible…) no cambian qué es un elemento
+  const cls = (el.attribs?.class ?? "").split(/\s+/).filter((c) => c && !STATE_CLASSES.has(c)).sort().join(".");
   return cls ? `${el.tagName}.${cls}` : "";
 }
 
-/** Busca grupos de hermanos con la misma etiqueta y clase (tarjetas, proyectos…). */
+/** Estructura de campos de un elemento (p. ej. "img,h3,p"), para comparar elementos de una lista. */
+function fieldShape($: cheerio.CheerioAPI, root: Element) {
+  const out: string[] = [];
+  const visit = (el: Element, isRoot: boolean) => {
+    if (SKIP.has(el.tagName)) return;
+    if (hasBackground(el)) out.push("bg");
+    if (el.tagName === "img") return void out.push("img");
+    if (!isRoot && isTextField($, el)) return void out.push(el.tagName);
+    elementChildren(el).forEach((c) => visit(c, false));
+  };
+  visit(root, true);
+  if (!out.length && isTextField($, root)) out.push(root.tagName);
+  return out.join(",");
+}
+
+const hasFormControls = ($: cheerio.CheerioAPI, el: Element) =>
+  ["input", "select", "textarea", "button", "form"].includes(el.tagName) || $(el).find("input, select, textarea, button, form").length > 0;
+
+/** Busca grupos de hermanos con la misma etiqueta, clase y estructura (tarjetas, proyectos…). */
 function findRepeatGroups($: cheerio.CheerioAPI, root: Element) {
   const groups: Element[][] = [];
   const walk = (el: Element) => {
@@ -147,7 +171,11 @@ function findRepeatGroups($: cheerio.CheerioAPI, root: Element) {
     }
     const inGroup = new Set<Element>();
     for (const members of bySig.values()) {
-      if (members.length >= 2 && members.every((m) => hasCandidate($, m))) {
+      const shape = members.length >= 2 ? fieldShape($, members[0]) : "";
+      if (
+        members.length >= 2 && shape &&
+        members.every((m) => hasCandidate($, m) && !hasFormControls($, m) && fieldShape($, m) === shape)
+      ) {
         groups.push(members);
         members.forEach((m) => inGroup.add(m));
       }
@@ -175,9 +203,26 @@ function autoAnnotate($: cheerio.CheerioAPI) {
     if (isGlobalRegion(el, $) && !regions.some((r) => $(el).parents().toArray().includes(r))) regions.push(el);
   });
 
-  const annotateArea = (area: Element, prefix: string, global: boolean, counterRef: { n: number; r: number }) => {
+  // Claves derivadas del contenido original: si vuelves a subir la web con cambios,
+  // los textos ya editados siguen en su sitio aunque añadas o quites otros elementos.
+  const used = new Map<string, number>();
+  const unique = (base: string) => {
+    const n = (used.get(base) ?? 0) + 1;
+    used.set(base, n);
+    return n > 1 ? `${base}-${n}` : base;
+  };
+  const contentKey = (prefix: string): KeyFn => (el, kind) => {
+    const basis =
+      kind === "img" ? `img|${el.attribs.src ?? el.attribs["data-src"] ?? ""}`
+      : kind === "bg" ? `bg|${(el.attribs.style ?? "").match(/url\(([^)]*)\)/i)?.[1] ?? ""}`
+      : `${el.tagName}|${$(el).text().replace(/\s+/g, " ").trim().slice(0, 160)}`;
+    return unique(`${prefix}${hash(basis)}`);
+  };
+
+  const annotateArea = (area: Element, prefix: string, global: boolean) => {
     for (const group of findRepeatGroups($, area)) {
-      const key = `${prefix}r${counterRef.r++}`;
+      const first = group[0];
+      const key = unique(`${prefix}r${hash(`${signature(first)}|${fieldShape($, first)}|${signature(first.parent as Element)}`)}`);
       for (const item of group) {
         $(item).attr(REPEAT_ATTR, key);
         if (global) $(item).attr(GLOBAL_MARK, "");
@@ -185,20 +230,17 @@ function autoAnnotate($: cheerio.CheerioAPI) {
         markFields($, item, () => `f${n++}`, false);
       }
     }
-    markFields($, area, () => `${prefix}${counterRef.n++}`, global, area === body);
+    markFields($, area, contentKey(prefix), global, area === body);
   };
 
-  regions.forEach((region, i) => {
-    const sig = hash(`${region.tagName}|${region.attribs?.class ?? ""}|${$(region).text().replace(/\s+/g, " ").trim()}|${i}`);
-    annotateArea(region, `g${sig}-`, true, { n: 0, r: 0 });
-  });
+  regions.forEach((region) => annotateArea(region, "g", true));
   // Resto de la página: las zonas comunes se retiran temporalmente para no marcarlas dos veces
   const placeholders = regions.map((r) => {
     const ph = $("<cms-placeholder></cms-placeholder>");
     $(r).replaceWith(ph);
     return { ph, r };
   });
-  annotateArea(body, "p", false, { n: 0, r: 0 });
+  annotateArea(body, "p", false);
   placeholders.forEach(({ ph, r }) => ph.replaceWith(r));
 }
 
