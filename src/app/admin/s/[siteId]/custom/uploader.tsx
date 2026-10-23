@@ -3,7 +3,6 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { unzipSync } from "fflate";
 import { FolderUp, FileArchive, Loader2, CheckCircle2, AlertCircle, UploadCloud } from "lucide-react";
-import { finalizeImport } from "@/app/actions/custom";
 import { toast } from "@/components/admin/toast";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +63,11 @@ export function Uploader({ siteId, hasFiles }: { siteId: string; hasFiles: boole
       }
     };
     await Promise.all([worker(), worker(), worker()]);
-    const r = await finalizeImport(siteId);
+    const r: { error?: string; message?: string } = await fetch("/api/admin/template/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ siteId }),
+    }).then((res) => res.json()).catch(() => ({ error: "No se han podido crear las páginas. Recarga e inténtalo de nuevo." }));
     setProgress(null);
     setErrors(errs);
     if (r.error) toast.error(r.error);

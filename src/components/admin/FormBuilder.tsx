@@ -99,7 +99,7 @@ export function FormBuilder({ siteId, form: initial, theme, mailEnabled }: { sit
             <div>
               <label className="label">Enviar avisos a</label>
               <input className="input" value={form.notifyEmails} onChange={(e) => set({ notifyEmails: e.target.value })} placeholder="hola@cliente.com, otro@cliente.com" />
-              <p className="help">Separa varios emails con comas. Los mensajes siempre se guardan en «Mensajes».</p>
+              <p className="help">Separa varios emails con comas. Si lo dejas vacío, se avisa al email de contacto del sitio (Ajustes → Contacto) o, si no hay, a los administradores. Los mensajes siempre se guardan en «Mensajes».</p>
               {!mailEnabled && <p className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"><AlertTriangle className="h-3.5 w-3.5" /> El servidor no tiene SMTP configurado: los avisos por email no se enviarán.</p>}
             </div>
           </div>
