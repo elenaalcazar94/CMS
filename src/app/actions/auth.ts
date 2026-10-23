@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import {
   clientIp, createSession, destroySession, hashPassword, hashToken, randomToken, rateLimit, requireUser, verifyPassword,
 } from "@/lib/auth";
-import { emailLayout, mailEnabled, sendMail } from "@/lib/mail";
+import { emailLayout, mailEnabled, sendMail, sendTestMail } from "@/lib/mail";
 import { appUrl } from "@/lib/utils";
 
 export async function login(fd: FormData) {
@@ -100,4 +100,11 @@ export async function changePassword(fd: FormData) {
   await db.session.deleteMany({ where: { userId: user.id } });
   await createSession(user.id);
   return { ok: true, message: "Contraseña actualizada" };
+}
+
+export async function sendTestEmail() {
+  const user = await requireUser();
+  if (!rateLimit(`testmail:${user.id}`, 5, 10 * 60_000)) return { error: "Has hecho demasiadas pruebas. Espera unos minutos." };
+  const error = await sendTestMail(user.email);
+  return error ? { error } : { ok: true, message: `Correo de prueba enviado a ${user.email}. Revisa tu bandeja (y la de spam).` };
 }

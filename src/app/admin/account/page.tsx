@@ -1,7 +1,8 @@
 import { requireUser } from "@/lib/auth";
 import { Card, PageHeader, Avatar } from "@/components/admin/ui";
 import { ActionForm, Submit } from "@/components/admin/client";
-import { changePassword, updateAccount } from "@/app/actions/auth";
+import { changePassword, updateAccount, sendTestEmail } from "@/app/actions/auth";
+import { mailEnabled } from "@/lib/mail";
 
 export const metadata = { title: "Mi cuenta" };
 
@@ -22,6 +23,16 @@ export default async function AccountPage() {
               <div><label className="label">Email</label><input name="email" type="email" className="input" defaultValue={user.email} required /></div>
             </div>
             <Submit>Guardar</Submit>
+          </ActionForm>
+        </Card>
+        <Card title="Correo saliente" description="Avisos de formularios y recuperación de contraseña.">
+          <ActionForm action={sendTestEmail} success={null} className="flex flex-wrap items-center justify-between gap-3 p-5">
+            <p className="text-sm text-zinc-600">
+              {mailEnabled()
+                ? <>Configurado con <strong className="text-zinc-900">{process.env.SMTP_HOST}</strong> como <strong className="text-zinc-900">{process.env.SMTP_USER}</strong>.</>
+                : "No hay SMTP configurado: los emails no se envían."}
+            </p>
+            <Submit className="btn-secondary" pendingText="Enviando…">Enviar email de prueba</Submit>
           </ActionForm>
         </Card>
         <Card title="Contraseña" description="Al cambiarla se cerrarán tus otras sesiones abiertas.">

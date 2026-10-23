@@ -43,3 +43,23 @@ export function emailLayout(title: string, body: string) {
   <h1 style="font-size:20px;margin:0 0 20px">${escapeHtml(title)}</h1>${body}
   <p style="margin-top:32px;font-size:12px;color:#8a8697">Enviado por Nido CMS</p></div></body></html>`;
 }
+
+/** Envía un correo de prueba y devuelve el error de SMTP legible, si lo hay. */
+export async function sendTestMail(to: string): Promise<string | null> {
+  if (!mailEnabled()) return "El servidor no tiene SMTP configurado (falta SMTP_HOST).";
+  try {
+    await getTransport().sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to,
+      subject: "Prueba de correo de Nido CMS",
+      html: emailLayout("¡El correo funciona!", "<p>Si lees esto, los avisos de formularios y la recuperación de contraseña ya se envían correctamente.</p>"),
+    });
+    return null;
+  } catch (e) {
+    console.error("[mail] Error en el correo de prueba", e);
+    const err = e as { code?: string; responseCode?: number; message?: string };
+    if (err.code === "EAUTH" || err.responseCode === 535) return "Gmail ha rechazado el usuario o la contraseña de aplicación. Revisa SMTP_USER y SMTP_PASS.";
+    if (err.code === "ETIMEDOUT" || err.code === "ECONNECTION" || err.code === "ESOCKET") return `No se ha podido conectar con ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587}.`;
+    return `Error al enviar: ${err.message ?? "desconocido"}`;
+  }
+}
